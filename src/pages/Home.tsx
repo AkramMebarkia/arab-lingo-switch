@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Navigate } from "react-router-dom";
 import {
   Bell, Coins, Filter, Lock, Navigation, Sparkles, TrendingUp,
@@ -289,24 +290,26 @@ export default function HomePage() {
         />
       </div>
 
-      {/* Notification panel */}
-      {showNotifications && (
+      {/* Notification panel — rendered via portal so Leaflet's high z-index can't overlap */}
+      {showNotifications && createPortal(
         <NotificationPanel
           notifications={notifications}
           unreadCount={unreadCount}
           lang={(i18n.language === "ar" ? "ar" : "en") as "en" | "ar"}
           onClose={() => { notificationsStore.markAllRead(); setShowNotifications(false); }}
-        />
+        />,
+        document.body,
       )}
 
-      {/* Digital twin modal */}
-      {showDigitalTwin && (
+      {/* Digital twin modal — also portaled */}
+      {showDigitalTwin && createPortal(
         <ParkingDigitalTwin
           lot={showDigitalTwin}
           userType={user.type as UserType}
           onClose={() => setShowDigitalTwin(null)}
           onNavigate={() => handleNavigate(showDigitalTwin)}
-        />
+        />,
+        document.body,
       )}
     </PhoneShell>
   );
@@ -335,7 +338,7 @@ function NotificationPanel({
       role="dialog"
       aria-modal="true"
       aria-label={t("notifications.title")}
-      className="fixed inset-0 z-50 flex items-end justify-center"
+      className="fixed inset-0 z-[1000] flex items-end justify-center"
     >
       <button
         aria-label={t("common.cancel")}
