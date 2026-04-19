@@ -40,11 +40,11 @@ export default function FindCarPage() {
 
   return (
     <PhoneShell>
-      <div className="px-5 pt-6">
+      <div className="px-5 pt-6 pb-6">
         <header className="flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-primary">{t("findCar.kicker")}</p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight">{t("findCar.title")}</h1>
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">{t("findCar.kicker")}</p>
+            <h1 className="mt-1 text-2xl font-extrabold tracking-tight">{t("findCar.title")}</h1>
           </div>
           <div className="flex items-center gap-2">
             <LanguageToggle />
@@ -53,9 +53,9 @@ export default function FindCarPage() {
         </header>
 
         {savedCar && lot ? (
-          <div className="mt-4 flex flex-col gap-4 animate-fade-in">
-            {/* Radar animation */}
-            <RadarSection />
+          <div className="mt-5 flex flex-col gap-5 animate-fade-in">
+            {/* Radar */}
+            <Radar walkMin={lot.walkingMin} />
 
             {/* Frosted info card */}
             <div className="glass-strong shadow-elevated rounded-3xl p-5">
@@ -82,10 +82,6 @@ export default function FindCarPage() {
               </div>
             </div>
 
-            {/* Animated route line */}
-            <RouteLine walkMin={lot.walkingMin} />
-
-            {/* Action buttons */}
             <button
               onClick={openInMaps}
               className="flex w-full items-center justify-center gap-2 rounded-2xl gradient-primary px-4 py-3.5 text-sm font-semibold text-primary-foreground shadow-glow transition-smooth hover:brightness-110"
@@ -119,75 +115,54 @@ export default function FindCarPage() {
   );
 }
 
-/* ---------- Radar ---------- */
-
-function RadarSection() {
-  return (
-    <div className="relative h-[260px] w-full overflow-hidden">
-      <svg viewBox="0 0 320 260" className="absolute inset-0 h-full w-full">
-        {/* Three concentric rings */}
-        <circle className="kfupm-radar-ring kfupm-radar-ring-1" cx="160" cy="130" r="40"
-          fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5" />
-        <circle className="kfupm-radar-ring kfupm-radar-ring-2" cx="160" cy="130" r="40"
-          fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5" />
-        <circle className="kfupm-radar-ring kfupm-radar-ring-3" cx="160" cy="130" r="40"
-          fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5" />
-
-        {/* Static halo */}
-        <circle cx="160" cy="130" r="100" fill="hsl(var(--primary) / 0.04)" />
-        <circle cx="160" cy="130" r="60" fill="hsl(var(--primary) / 0.06)" />
-
-        {/* YOU dot */}
-        <circle cx="160" cy="130" r="6" fill="hsl(var(--primary))" />
-        <text x="160" y="155" fontSize="9" fontWeight="700" fill="hsl(var(--muted-foreground))"
-          textAnchor="middle" fontFamily="ui-sans-serif, system-ui">YOU</text>
-
-        {/* CAR dot offset */}
-        <g className="kfupm-radar-car">
-          <circle cx="200" cy="100" r="7" fill="hsl(var(--success))" />
-          <text x="200" y="86" fontSize="9" fontWeight="700" fill="hsl(var(--success))"
-            textAnchor="middle" fontFamily="ui-sans-serif, system-ui">CAR</text>
-        </g>
-      </svg>
-    </div>
-  );
-}
-
-function RouteLine({ walkMin }: { walkMin: number }) {
+/* =========================================================
+   Modern radar — pure CSS, no SVG transform-box dependency.
+   Three concentric pulse rings, a YOU dot in the centre,
+   and an offset CAR pin with a soft halo. Works in light/dark.
+   ========================================================= */
+function Radar({ walkMin }: { walkMin: number }) {
   const { t } = useTranslation();
   return (
-    <div className="glass shadow-soft rounded-3xl p-4">
-      <div className="flex items-center gap-3">
-        <Endpoint label={t("findCar.you")} tone="primary" />
-        <div className="relative flex-1">
-          <svg viewBox="0 0 200 20" className="h-5 w-full">
-            <line
-              x1="0" y1="10" x2="200" y2="10"
-              stroke="hsl(var(--primary))"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeDasharray="6 6"
-              className="kfupm-route-dash"
-            />
-          </svg>
-          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-card px-2 py-0.5 text-[10px] font-semibold text-primary shadow-soft">
-            {t("common.minWalk", { n: walkMin })}
+    <div className="relative mx-auto h-[280px] w-full max-w-[360px]">
+      {/* base disc */}
+      <div className="absolute inset-0 grid place-items-center">
+        <div className="kfupm-radar-disc">
+          {/* concentric guide rings */}
+          <span className="kfupm-radar-guide kfupm-radar-guide-1" />
+          <span className="kfupm-radar-guide kfupm-radar-guide-2" />
+          <span className="kfupm-radar-guide kfupm-radar-guide-3" />
+
+          {/* sweeping pulse rings */}
+          <span className="kfupm-radar-pulse kfupm-radar-pulse-1" />
+          <span className="kfupm-radar-pulse kfupm-radar-pulse-2" />
+          <span className="kfupm-radar-pulse kfupm-radar-pulse-3" />
+
+          {/* sweeping conic beam */}
+          <span className="kfupm-radar-beam" />
+
+          {/* YOU dot in centre */}
+          <span className="kfupm-radar-you">
+            <span className="kfupm-radar-you-dot" />
+          </span>
+
+          {/* CAR pin offset to upper-right */}
+          <span className="kfupm-radar-car">
+            <span className="kfupm-radar-car-halo" />
+            <span className="kfupm-radar-car-dot">
+              <Car className="h-3.5 w-3.5 text-success-foreground" />
+            </span>
           </span>
         </div>
-        <Endpoint label={t("findCar.car")} tone="success" />
       </div>
-    </div>
-  );
-}
 
-function Endpoint({ label, tone }: { label: string; tone: "primary" | "success" }) {
-  const cls = tone === "primary" ? "bg-primary" : "bg-success";
-  return (
-    <div className="flex flex-col items-center gap-1">
-      <span className={`relative h-3.5 w-3.5 rounded-full ${cls}`}>
-        <span className="dot-pulse absolute inset-0 rounded-full" />
+      {/* labels — absolutely positioned overlays */}
+      <span className="absolute bottom-2 start-1/2 -translate-x-1/2 rounded-full bg-card/80 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground backdrop-blur">
+        {t("findCar.you")}
       </span>
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className="absolute end-3 top-3 flex items-center gap-1.5 rounded-full bg-success/15 px-2.5 py-1 text-[10px] font-bold text-success backdrop-blur">
+        <span className="dot-pulse h-1.5 w-1.5 rounded-full bg-success" />
+        {t("common.minWalk", { n: walkMin })}
+      </span>
     </div>
   );
 }
@@ -195,14 +170,12 @@ function Endpoint({ label, tone }: { label: string; tone: "primary" | "success" 
 function CarHero() {
   return (
     <div className="relative h-[200px] w-[200px]">
-      {/* Rotating dashed circles */}
       <svg viewBox="0 0 200 200" className="absolute inset-0 h-full w-full kfupm-rotate-slow">
         <circle cx="100" cy="100" r="88" fill="none" stroke="hsl(var(--primary) / 0.35)" strokeWidth="1.5" strokeDasharray="6 8" />
       </svg>
       <svg viewBox="0 0 200 200" className="absolute inset-0 h-full w-full kfupm-rotate-fast">
         <circle cx="100" cy="100" r="68" fill="none" stroke="hsl(var(--primary) / 0.25)" strokeWidth="1.5" strokeDasharray="4 10" />
       </svg>
-      {/* Car silhouette */}
       <div className="absolute inset-0 flex items-center justify-center">
         <svg viewBox="0 0 120 60" className="h-20 w-20 text-primary kfupm-car-bob">
           <path
@@ -217,41 +190,116 @@ function CarHero() {
   );
 }
 
+/* All radar visuals via plain CSS keyframes — robust across browsers. */
 function RadarStyles() {
   return (
     <style>{`
+      .kfupm-radar-disc {
+        position: relative;
+        width: 280px; height: 280px; border-radius: 9999px;
+        background:
+          radial-gradient(closest-side, hsl(var(--primary) / 0.10), transparent 70%),
+          radial-gradient(closest-side, hsl(var(--primary) / 0.04), transparent 100%);
+        overflow: hidden;
+      }
+      .kfupm-radar-guide {
+        position: absolute; left: 50%; top: 50%;
+        transform: translate(-50%, -50%);
+        border-radius: 9999px;
+        border: 1px solid hsl(var(--primary) / 0.18);
+      }
+      .kfupm-radar-guide-1 { width: 90px;  height: 90px;  }
+      .kfupm-radar-guide-2 { width: 170px; height: 170px; }
+      .kfupm-radar-guide-3 { width: 250px; height: 250px; }
+
       @keyframes kfupm-radar-pulse {
-        0%   { transform: scale(1);   opacity: 0.55; }
+        0%   { transform: translate(-50%, -50%) scale(0.2); opacity: 0.6; }
         80%  { opacity: 0; }
-        100% { transform: scale(2.5); opacity: 0; }
+        100% { transform: translate(-50%, -50%) scale(1);   opacity: 0; }
       }
-      .kfupm-radar-ring { transform-origin: 160px 130px; transform-box: fill-box; }
-      .kfupm-radar-ring-1 { animation: kfupm-radar-pulse 2s ease-out infinite; opacity: 0.5; }
-      .kfupm-radar-ring-2 { animation: kfupm-radar-pulse 2s ease-out infinite 0.6s; opacity: 0.3; }
-      .kfupm-radar-ring-3 { animation: kfupm-radar-pulse 2s ease-out infinite 1.2s; opacity: 0.15; }
+      .kfupm-radar-pulse {
+        position: absolute; left: 50%; top: 50%;
+        width: 250px; height: 250px;
+        border-radius: 9999px;
+        border: 2px solid hsl(var(--primary) / 0.55);
+        transform: translate(-50%, -50%) scale(0.2);
+        animation: kfupm-radar-pulse 2.4s cubic-bezier(0.16,1,0.3,1) infinite;
+      }
+      .kfupm-radar-pulse-1 { animation-delay: 0s;   }
+      .kfupm-radar-pulse-2 { animation-delay: 0.8s; }
+      .kfupm-radar-pulse-3 { animation-delay: 1.6s; }
 
-      @keyframes kfupm-car-pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.18); }
+      @keyframes kfupm-radar-beam {
+        from { transform: translate(-50%, -50%) rotate(0deg);   }
+        to   { transform: translate(-50%, -50%) rotate(360deg); }
       }
-      .kfupm-radar-car { transform-origin: 200px 100px; transform-box: fill-box; animation: kfupm-car-pulse 1.6s ease-in-out infinite; }
+      .kfupm-radar-beam {
+        position: absolute; left: 50%; top: 50%;
+        width: 250px; height: 250px;
+        border-radius: 9999px;
+        background: conic-gradient(
+          from 0deg,
+          hsl(var(--primary) / 0.35) 0deg,
+          hsl(var(--primary) / 0.10) 40deg,
+          transparent 90deg,
+          transparent 360deg
+        );
+        mask: radial-gradient(circle, transparent 18px, #000 19px);
+        -webkit-mask: radial-gradient(circle, transparent 18px, #000 19px);
+        animation: kfupm-radar-beam 4s linear infinite;
+      }
 
-      @keyframes kfupm-dash-flow {
-        from { stroke-dashoffset: 0; }
-        to   { stroke-dashoffset: -24; }
+      .kfupm-radar-you {
+        position: absolute; left: 50%; top: 50%;
+        transform: translate(-50%, -50%);
+        width: 28px; height: 28px;
+        border-radius: 9999px;
+        background: hsl(var(--background));
+        border: 2px solid hsl(var(--primary));
+        box-shadow: 0 0 0 6px hsl(var(--primary) / 0.18), 0 6px 20px hsl(var(--primary) / 0.35);
+        display: grid; place-items: center;
       }
-      .kfupm-route-dash { animation: kfupm-dash-flow 1.2s linear infinite; }
+      .kfupm-radar-you-dot {
+        width: 12px; height: 12px; border-radius: 9999px;
+        background: hsl(var(--primary));
+      }
+
+      .kfupm-radar-car {
+        position: absolute; left: 50%; top: 50%;
+        transform: translate(calc(-50% + 70px), calc(-50% - 56px));
+      }
+      .kfupm-radar-car-halo {
+        position: absolute; left: 50%; top: 50%;
+        width: 44px; height: 44px;
+        border-radius: 9999px;
+        background: hsl(var(--success) / 0.25);
+        transform: translate(-50%, -50%);
+        animation: kfupm-radar-car-halo 1.6s ease-out infinite;
+      }
+      @keyframes kfupm-radar-car-halo {
+        0%   { transform: translate(-50%, -50%) scale(0.7); opacity: 0.7; }
+        100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0;   }
+      }
+      .kfupm-radar-car-dot {
+        position: relative;
+        display: grid; place-items: center;
+        width: 30px; height: 30px;
+        border-radius: 9999px;
+        background: hsl(var(--success));
+        border: 2px solid hsl(var(--background));
+        box-shadow: 0 8px 22px hsl(var(--success) / 0.45);
+      }
 
       @keyframes kfupm-car-bob {
         0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-6px); }
+        50%      { transform: translateY(-6px); }
       }
       .kfupm-car-bob { animation: kfupm-car-bob 2s ease-in-out infinite; }
 
       @keyframes kfupm-spin-cw  { to { transform: rotate(360deg); } }
       @keyframes kfupm-spin-ccw { to { transform: rotate(-360deg); } }
       .kfupm-rotate-slow { animation: kfupm-spin-cw  12s linear infinite; }
-      .kfupm-rotate-fast { animation: kfupm-spin-ccw 8s  linear infinite; }
+      .kfupm-rotate-fast { animation: kfupm-spin-ccw  8s linear infinite; }
     `}</style>
   );
 }
