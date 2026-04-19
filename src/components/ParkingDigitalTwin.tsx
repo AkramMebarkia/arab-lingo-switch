@@ -119,7 +119,7 @@ export const ParkingDigitalTwin = memo(function ParkingDigitalTwin({
       role="dialog"
       aria-modal="true"
       aria-label="Parking lot floor plan"
-      className="fixed inset-0 z-50 overflow-y-auto bg-background/98 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-[1000] overflow-y-auto bg-background/98 backdrop-blur-sm animate-fade-in"
     >
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col gap-3 px-4 py-5">
         {/* Header */}
