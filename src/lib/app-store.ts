@@ -15,17 +15,36 @@ export interface SavedCar {
   savedAt: number;
 }
 
+export interface Vehicle {
+  id: string;
+  plate: string;
+  make: string;
+  model: string;
+  color: string; // one of: white|black|silver|red|blue|green|orange|other
+  year: string;
+  isPrimary: boolean;
+}
+
 interface AppState {
   user: AppUser | null;
   credits: number;
   savedCar: SavedCar | null;
   theme: "light" | "dark";
+  reservedListingIds: string[];
+  vehicles: Vehicle[];
 }
 
 const STORAGE_KEY = "kfupm-ps-state-v1";
 
 function defaultState(): AppState {
-  return { user: null, credits: 50, savedCar: null, theme: "dark" };
+  return {
+    user: null,
+    credits: 50,
+    savedCar: null,
+    theme: "dark",
+    reservedListingIds: [],
+    vehicles: [],
+  };
 }
 
 function load(): AppState {
@@ -33,7 +52,22 @@ function load(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultState();
-    return { ...defaultState(), ...(JSON.parse(raw) as Partial<AppState>) };
+    const parsed = { ...defaultState(), ...(JSON.parse(raw) as Partial<AppState>) };
+    // Migration: if user has plate but no vehicles yet, seed primary vehicle.
+    if (parsed.user?.plate && (!parsed.vehicles || parsed.vehicles.length === 0)) {
+      parsed.vehicles = [
+        {
+          id: "v1",
+          plate: parsed.user.plate,
+          make: "",
+          model: "",
+          color: "silver",
+          year: "",
+          isPrimary: true,
+        },
+      ];
+    }
+    return parsed;
   } catch {
     return defaultState();
   }

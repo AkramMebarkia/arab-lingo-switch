@@ -1,12 +1,16 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import type { ParkingLot } from "@/lib/mock-data";
 
+export type LotMarkerState = "eligible" | "ineligible" | "prohibited";
+
 interface ParkingMapProps {
   lots: ParkingLot[];
   selectedId: string | null;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, state: LotMarkerState) => void;
   routeTo?: ParkingLot | null;
   theme: "light" | "dark";
+  ineligible?: ParkingLot[];
+  prohibited?: ParkingLot[];
 }
 
 const LazyMap = lazy(() =>

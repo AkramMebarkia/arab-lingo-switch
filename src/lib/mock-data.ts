@@ -1,5 +1,4 @@
-// KFUPM Parking System — real data from KFUPM Student Parking Guide
-// Capacities from "إحصائية المواقف" (Parking Statistics) sheet.
+// KFUPM Parking System — permit-aware data per spec.
 // Coordinates approximate KFUPM Dhahran campus (~26.305°N, 50.144°E).
 
 export type UserType =
@@ -15,38 +14,45 @@ export type SlotStatus = "available" | "occupied" | "limited";
 export type LotKind = "covered" | "uncovered" | "general";
 
 export interface ParkingLot {
-  id: string;             // canonical id e.g. "L-77"
-  number: string;         // KFUPM lot number e.g. "77" or "Dhahran Mosque"
-  name: string;           // English display name
+  id: string;
+  number: string;
+  name: string;
   kind: LotKind;
   zone: string;
   coordinates: [number, number]; // [lng, lat]
-  total: number;          // capacity from guide stats
-  available: number;      // simulated live availability
+  total: number;
+  available: number;
   status: SlotStatus;
   walkingMin: number;
   distanceM: number;
   eligibleFor: UserType[];
   prediction: string;
   predictionTone: "good" | "warn" | "bad";
-  notes?: string;         // e.g. "5 PM – 7 AM only", "3rd floor only"
-  curfewExit?: boolean;   // applies to commuters (must exit by 10 PM)
-  prohibited?: boolean;   // 24/7 banned for students
+  notes?: string;
+  curfewExit?: boolean;
+  prohibited?: boolean;
 }
 
-// KFUPM Dhahran campus center (approx)
 export const CAMPUS_CENTER: [number, number] = [50.1441, 26.3055];
 
-// Helper to scatter coordinates around campus
 const c = (dLng: number, dLat: number): [number, number] => [
   CAMPUS_CENTER[0] + dLng,
   CAMPUS_CENTER[1] + dLat,
 ];
 
-const ALL_FACULTY_STAFF: UserType[] = ["faculty", "staff", "handicap"];
+// Permit eligibility per KFUPM spec
+const ALL: UserType[] = ["faculty", "staff", "handicap"];
+const MR_NR_ALL: UserType[] = ["male-resident", "male-non-resident", ...ALL];
+const ALL_STUDENTS: UserType[] = [
+  "male-resident",
+  "female-resident",
+  "male-non-resident",
+  "female-non-resident",
+  ...ALL,
+];
 
 export const PARKING_LOTS: ParkingLot[] = [
-  // ── General / Named locations ─────────────────────────────
+  // ── Mosques (faculty/staff) ───────────────────────────────
   {
     id: "L-MOSQUE-DHAHRAN",
     number: "Dhahran Mosque",
@@ -59,7 +65,7 @@ export const PARKING_LOTS: ParkingLot[] = [
     status: "available",
     walkingMin: 6,
     distanceM: 480,
-    eligibleFor: ["faculty", "staff", "handicap"],
+    eligibleFor: ALL,
     prediction: "Stable — busy after Asr prayer",
     predictionTone: "good",
   },
@@ -75,10 +81,12 @@ export const PARKING_LOTS: ParkingLot[] = [
     status: "available",
     walkingMin: 7,
     distanceM: 560,
-    eligibleFor: ["faculty", "staff", "handicap"],
+    eligibleFor: ALL,
     prediction: "Best chance before 11:30 AM",
     predictionTone: "good",
   },
+
+  // ── Named locations ───────────────────────────────────────
   {
     id: "L-STUDENT-MALL",
     number: "Student Mall",
@@ -91,7 +99,7 @@ export const PARKING_LOTS: ParkingLot[] = [
     status: "limited",
     walkingMin: 3,
     distanceM: 220,
-    eligibleFor: ["male-resident", "female-resident", "staff", "handicap"],
+    eligibleFor: ["male-resident", "female-resident", ...ALL],
     prediction: "Likely full in 10 min",
     predictionTone: "warn",
   },
@@ -107,13 +115,7 @@ export const PARKING_LOTS: ParkingLot[] = [
     status: "available",
     walkingMin: 5,
     distanceM: 410,
-    eligibleFor: [
-      "male-non-resident",
-      "female-non-resident",
-      "faculty",
-      "staff",
-      "handicap",
-    ],
+    eligibleFor: ["male-non-resident", "female-non-resident", ...ALL],
     prediction: "Stable for 30 min",
     predictionTone: "good",
     curfewExit: true,
@@ -130,7 +132,7 @@ export const PARKING_LOTS: ParkingLot[] = [
     status: "available",
     walkingMin: 4,
     distanceM: 320,
-    eligibleFor: ["female-resident", "staff", "handicap"],
+    eligibleFor: ["female-resident", ...ALL],
     prediction: "Reserved priority for residents",
     predictionTone: "good",
   },
@@ -146,7 +148,7 @@ export const PARKING_LOTS: ParkingLot[] = [
     status: "available",
     walkingMin: 4,
     distanceM: 300,
-    eligibleFor: ["female-resident", "female-non-resident", "faculty", "handicap"],
+    eligibleFor: ["female-resident", "female-non-resident", ...ALL],
     prediction: "Filling steadily",
     predictionTone: "good",
     curfewExit: true,
@@ -165,13 +167,7 @@ export const PARKING_LOTS: ParkingLot[] = [
     status: "limited",
     walkingMin: 5,
     distanceM: 380,
-    eligibleFor: [
-      "male-resident",
-      "male-non-resident",
-      "faculty",
-      "staff",
-      "handicap",
-    ],
+    eligibleFor: ["male-non-resident", ...ALL],
     prediction: "Likely full in 12 min",
     predictionTone: "warn",
     curfewExit: true,
@@ -188,153 +184,11 @@ export const PARKING_LOTS: ParkingLot[] = [
     status: "available",
     walkingMin: 6,
     distanceM: 460,
-    eligibleFor: [
-      "male-resident",
-      "male-non-resident",
-      "faculty",
-      "staff",
-      "handicap",
-    ],
+    eligibleFor: MR_NR_ALL,
     prediction: "High availability next 20 min",
     predictionTone: "good",
     curfewExit: true,
   },
-  {
-    id: "L-39",
-    number: "39",
-    name: "Lot 39",
-    kind: "uncovered",
-    zone: "Female Zone",
-    coordinates: c(-0.0024, -0.0009),
-    total: 75,
-    available: 28,
-    status: "available",
-    walkingMin: 5,
-    distanceM: 390,
-    eligibleFor: [
-      "female-non-resident",
-      "faculty",
-      "staff",
-      "handicap",
-    ],
-    prediction: "Stable for 25 min",
-    predictionTone: "good",
-    curfewExit: true,
-  },
-  {
-    id: "L-57",
-    number: "57",
-    name: "Lot 57",
-    kind: "uncovered",
-    zone: "Academic Perimeter",
-    coordinates: c(0.0009, 0.0017),
-    total: 172,
-    available: 64,
-    status: "available",
-    walkingMin: 6,
-    distanceM: 470,
-    eligibleFor: [
-      "male-resident",
-      "female-resident",
-      "male-non-resident",
-      "female-non-resident",
-      "faculty",
-      "staff",
-      "handicap",
-    ],
-    prediction: "Good chance now",
-    predictionTone: "good",
-    curfewExit: true,
-  },
-  {
-    id: "L-59U",
-    number: "59 (Uncovered)",
-    name: "Lot 59 — Uncovered",
-    kind: "uncovered",
-    zone: "Academic Perimeter",
-    coordinates: c(0.0014, 0.0011),
-    total: 626,
-    available: 0,
-    status: "occupied",
-    walkingMin: 7,
-    distanceM: 540,
-    eligibleFor: [
-      "male-non-resident",
-      "female-non-resident",
-      "faculty",
-      "staff",
-      "handicap",
-    ],
-    prediction: "Spots opening at 10:20 AM",
-    predictionTone: "bad",
-    curfewExit: true,
-  },
-  {
-    id: "L-60",
-    number: "60",
-    name: "Lot 60",
-    kind: "uncovered",
-    zone: "Academic Perimeter",
-    coordinates: c(0.0019, 0.0006),
-    total: 827,
-    available: 312,
-    status: "available",
-    walkingMin: 8,
-    distanceM: 620,
-    eligibleFor: [
-      "male-resident",
-      "female-resident",
-      "male-non-resident",
-      "female-non-resident",
-      "faculty",
-      "staff",
-      "handicap",
-    ],
-    prediction: "Plenty of space now",
-    predictionTone: "good",
-    curfewExit: true,
-  },
-  {
-    id: "L-64U",
-    number: "64 (Uncovered)",
-    name: "Lot 64 — Uncovered",
-    kind: "uncovered",
-    zone: "Academic Perimeter",
-    coordinates: c(-0.0008, -0.0017),
-    total: 52,
-    available: 22,
-    status: "available",
-    walkingMin: 7,
-    distanceM: 540,
-    eligibleFor: ["male-resident", "faculty", "staff", "handicap"],
-    prediction: "Open evenings only",
-    predictionTone: "good",
-    notes: "Available 5:00 PM – 7:00 AM only",
-  },
-  {
-    id: "L-400",
-    number: "400",
-    name: "Lot 400",
-    kind: "uncovered",
-    zone: "South Lot",
-    coordinates: c(-0.0042, -0.0029),
-    total: 342,
-    available: 198,
-    status: "available",
-    walkingMin: 12,
-    distanceM: 920,
-    eligibleFor: [
-      "female-resident",
-      "female-non-resident",
-      "staff",
-      "handicap",
-    ],
-    prediction: "Always reliable",
-    predictionTone: "good",
-    curfewExit: true,
-  },
-
-  // ── Covered Lots ──────────────────────────────────────────
   {
     id: "L-23",
     number: "23",
@@ -347,7 +201,7 @@ export const PARKING_LOTS: ParkingLot[] = [
     status: "available",
     walkingMin: 4,
     distanceM: 310,
-    eligibleFor: ["female-resident", "faculty", "staff", "handicap"],
+    eligibleFor: ["female-resident", ...ALL],
     prediction: "Steady inflow",
     predictionTone: "good",
     notes: "Strictly 3rd floor for female residents",
@@ -364,10 +218,95 @@ export const PARKING_LOTS: ParkingLot[] = [
     status: "available",
     walkingMin: 4,
     distanceM: 320,
-    eligibleFor: ["female-resident", "faculty", "staff", "handicap"],
+    eligibleFor: ["female-resident", ...ALL],
     prediction: "Good availability",
     predictionTone: "good",
     notes: "Strictly 2nd floor for female residents",
+  },
+  {
+    id: "L-39",
+    number: "39",
+    name: "Lot 39",
+    kind: "uncovered",
+    zone: "Female Zone",
+    coordinates: c(-0.0024, -0.0009),
+    total: 75,
+    available: 28,
+    status: "available",
+    walkingMin: 5,
+    distanceM: 390,
+    eligibleFor: ["female-non-resident", ...ALL],
+    prediction: "Stable for 25 min",
+    predictionTone: "good",
+    curfewExit: true,
+  },
+  {
+    id: "L-57",
+    number: "57",
+    name: "Lot 57",
+    kind: "uncovered",
+    zone: "Academic Perimeter",
+    coordinates: c(0.0009, 0.0017),
+    total: 172,
+    available: 64,
+    status: "available",
+    walkingMin: 6,
+    distanceM: 470,
+    eligibleFor: ALL_STUDENTS,
+    prediction: "Good chance now",
+    predictionTone: "good",
+    curfewExit: true,
+  },
+  {
+    id: "L-59U",
+    number: "59 (Uncovered)",
+    name: "Lot 59 — Uncovered",
+    kind: "uncovered",
+    zone: "Academic Perimeter",
+    coordinates: c(0.0014, 0.0011),
+    total: 626,
+    available: 0,
+    status: "occupied",
+    walkingMin: 7,
+    distanceM: 540,
+    eligibleFor: ["male-non-resident", ...ALL],
+    prediction: "Spots opening at 10:20 AM",
+    predictionTone: "bad",
+    curfewExit: true,
+  },
+  {
+    id: "L-60",
+    number: "60",
+    name: "Lot 60",
+    kind: "uncovered",
+    zone: "Academic Perimeter",
+    coordinates: c(0.0019, 0.0006),
+    total: 827,
+    available: 312,
+    status: "available",
+    walkingMin: 8,
+    distanceM: 620,
+    eligibleFor: ALL_STUDENTS,
+    prediction: "Plenty of space now",
+    predictionTone: "good",
+    curfewExit: true,
+  },
+  {
+    id: "L-64U",
+    number: "64 (Uncovered)",
+    name: "Lot 64 — Uncovered",
+    kind: "uncovered",
+    zone: "Academic Perimeter",
+    coordinates: c(-0.0008, -0.0017),
+    total: 52,
+    available: 22,
+    status: "available",
+    walkingMin: 7,
+    distanceM: 540,
+    eligibleFor: ["male-resident", ...ALL],
+    prediction: "Open evenings only",
+    predictionTone: "good",
+    notes: "Available 5:00 PM – 7:00 AM only",
   },
   {
     id: "L-64C",
@@ -381,7 +320,7 @@ export const PARKING_LOTS: ParkingLot[] = [
     status: "available",
     walkingMin: 6,
     distanceM: 480,
-    eligibleFor: ["male-resident", "faculty", "staff", "handicap"],
+    eligibleFor: ["male-resident", ...ALL],
     prediction: "Open evenings only",
     predictionTone: "good",
     notes: "Available 5:00 PM – 7:00 AM only",
@@ -398,13 +337,7 @@ export const PARKING_LOTS: ParkingLot[] = [
     status: "available",
     walkingMin: 5,
     distanceM: 380,
-    eligibleFor: [
-      "male-resident",
-      "male-non-resident",
-      "faculty",
-      "staff",
-      "handicap",
-    ],
+    eligibleFor: MR_NR_ALL,
     prediction: "Plenty of covered space",
     predictionTone: "good",
     curfewExit: true,
@@ -421,13 +354,7 @@ export const PARKING_LOTS: ParkingLot[] = [
     status: "available",
     walkingMin: 5,
     distanceM: 400,
-    eligibleFor: [
-      "male-resident",
-      "male-non-resident",
-      "faculty",
-      "staff",
-      "handicap",
-    ],
+    eligibleFor: MR_NR_ALL,
     prediction: "Filling fast after 9 AM",
     predictionTone: "good",
     curfewExit: true,
@@ -444,14 +371,7 @@ export const PARKING_LOTS: ParkingLot[] = [
     status: "limited",
     walkingMin: 6,
     distanceM: 460,
-    eligibleFor: [
-      "male-resident",
-      "female-resident",
-      "male-non-resident",
-      "faculty",
-      "staff",
-      "handicap",
-    ],
+    eligibleFor: MR_NR_ALL,
     prediction: "Likely full in 8 min",
     predictionTone: "warn",
     curfewExit: true,
@@ -468,7 +388,7 @@ export const PARKING_LOTS: ParkingLot[] = [
     status: "available",
     walkingMin: 6,
     distanceM: 470,
-    eligibleFor: ["male-resident", "female-resident", "faculty", "staff", "handicap"],
+    eligibleFor: ["male-resident", "female-resident", ...ALL],
     prediction: "High availability",
     predictionTone: "good",
   },
@@ -484,21 +404,30 @@ export const PARKING_LOTS: ParkingLot[] = [
     status: "available",
     walkingMin: 5,
     distanceM: 400,
-    eligibleFor: [
-      "male-resident",
-      "female-resident",
-      "male-non-resident",
-      "female-non-resident",
-      "faculty",
-      "staff",
-      "handicap",
-    ],
+    eligibleFor: ALL_STUDENTS,
     prediction: "Most popular — book a level early",
     predictionTone: "good",
     curfewExit: true,
   },
+  {
+    id: "L-400",
+    number: "400",
+    name: "Lot 400",
+    kind: "uncovered",
+    zone: "South Lot",
+    coordinates: c(-0.0042, -0.0029),
+    total: 342,
+    available: 198,
+    status: "available",
+    walkingMin: 12,
+    distanceM: 920,
+    eligibleFor: ["female-non-resident", ...ALL],
+    prediction: "Always reliable",
+    predictionTone: "good",
+    curfewExit: true,
+  },
 
-  // ── 24/7 Prohibited (shown but blocked) ───────────────────
+  // ── 24/7 Prohibited (shown but blocked for students) ─────
   ...(["5", "11", "14", "21"].map((n, i) => ({
     id: `L-PR${n}`,
     number: n,
@@ -511,7 +440,7 @@ export const PARKING_LOTS: ParkingLot[] = [
     status: "occupied" as SlotStatus,
     walkingMin: 0,
     distanceM: 0,
-    eligibleFor: ALL_FACULTY_STAFF,
+    eligibleFor: ALL,
     prediction: "24/7 prohibited for students",
     predictionTone: "bad" as const,
     prohibited: true,
@@ -528,7 +457,7 @@ export const PARKING_LOTS: ParkingLot[] = [
     status: "occupied" as SlotStatus,
     walkingMin: 0,
     distanceM: 0,
-    eligibleFor: ALL_FACULTY_STAFF,
+    eligibleFor: ALL,
     prediction: "24/7 prohibited for students",
     predictionTone: "bad" as const,
     prohibited: true,
@@ -540,6 +469,7 @@ export interface TradeListing {
   ownerName: string;
   ownerType: "Faculty" | "Staff";
   lot: string;
+  lotId: string; // canonical lot id for permit filtering
   distanceM: number;
   windowStart: string;
   windowEnd: string;
@@ -552,6 +482,7 @@ export const TRADE_LISTINGS: TradeListing[] = [
     ownerName: "Dr. Khalid Al-Otaibi",
     ownerType: "Faculty",
     lot: "Lot 23 · Slot 14 (3rd fl)",
+    lotId: "L-23",
     distanceM: 310,
     windowStart: "10:30",
     windowEnd: "13:00",
@@ -562,6 +493,7 @@ export const TRADE_LISTINGS: TradeListing[] = [
     ownerName: "S. Al-Harbi",
     ownerType: "Staff",
     lot: "Lot 73 · Slot 03",
+    lotId: "L-73",
     distanceM: 460,
     windowStart: "11:00",
     windowEnd: "15:30",
@@ -572,10 +504,33 @@ export const TRADE_LISTINGS: TradeListing[] = [
     ownerName: "Prof. Noura Al-Qahtani",
     ownerType: "Faculty",
     lot: "Lot 77 · Slot 22 (L1)",
+    lotId: "L-77",
     distanceM: 400,
     windowStart: "09:45",
     windowEnd: "12:15",
     priceCredits: 15,
+  },
+  {
+    id: "T-4",
+    ownerName: "Eng. Faisal Al-Dossari",
+    ownerType: "Staff",
+    lot: "Lot 20 · Slot 41",
+    lotId: "L-20",
+    distanceM: 460,
+    windowStart: "08:00",
+    windowEnd: "11:00",
+    priceCredits: 6,
+  },
+  {
+    id: "T-5",
+    ownerName: "Dr. Layla Al-Shamri",
+    ownerType: "Faculty",
+    lot: "Lot 39 · Slot 07",
+    lotId: "L-39",
+    distanceM: 390,
+    windowStart: "12:30",
+    windowEnd: "16:00",
+    priceCredits: 10,
   },
 ];
 
@@ -597,53 +552,11 @@ export const USER_TYPE_META: Record<
   UserType,
   { label: string; emoji: string; tag: string; permitColor: string; curfew: boolean }
 > = {
-  "male-resident": {
-    label: "Male Resident",
-    emoji: "🟢",
-    tag: "Green Permit",
-    permitColor: "hsl(152 64% 44%)",
-    curfew: false,
-  },
-  "female-resident": {
-    label: "Female Resident",
-    emoji: "🩷",
-    tag: "Pink Permit",
-    permitColor: "hsl(340 75% 65%)",
-    curfew: false,
-  },
-  "male-non-resident": {
-    label: "Male Commuter",
-    emoji: "🟣",
-    tag: "Purple Permit",
-    permitColor: "hsl(265 70% 56%)",
-    curfew: true,
-  },
-  "female-non-resident": {
-    label: "Female Commuter",
-    emoji: "🩷",
-    tag: "Striped Pink Permit",
-    permitColor: "hsl(340 75% 65%)",
-    curfew: true,
-  },
-  faculty: {
-    label: "Faculty",
-    emoji: "🎓",
-    tag: "Faculty",
-    permitColor: "hsl(222 87% 56%)",
-    curfew: false,
-  },
-  staff: {
-    label: "Staff",
-    emoji: "💼",
-    tag: "Staff",
-    permitColor: "hsl(188 80% 48%)",
-    curfew: false,
-  },
-  handicap: {
-    label: "Accessibility",
-    emoji: "♿",
-    tag: "Priority Permit",
-    permitColor: "hsl(215 88% 60%)",
-    curfew: false,
-  },
+  "male-resident": { label: "Male Resident", emoji: "🟢", tag: "Green Permit", permitColor: "hsl(152 64% 44%)", curfew: false },
+  "female-resident": { label: "Female Resident", emoji: "🩷", tag: "Pink Permit", permitColor: "hsl(340 75% 65%)", curfew: false },
+  "male-non-resident": { label: "Male Commuter", emoji: "🟣", tag: "Purple Permit", permitColor: "hsl(265 70% 56%)", curfew: true },
+  "female-non-resident": { label: "Female Commuter", emoji: "🩷", tag: "Striped Pink Permit", permitColor: "hsl(340 75% 65%)", curfew: true },
+  faculty: { label: "Faculty", emoji: "🎓", tag: "Faculty", permitColor: "hsl(222 87% 56%)", curfew: false },
+  staff: { label: "Staff", emoji: "💼", tag: "Staff", permitColor: "hsl(188 80% 48%)", curfew: false },
+  handicap: { label: "Accessibility", emoji: "♿", tag: "Priority Permit", permitColor: "hsl(215 88% 60%)", curfew: false },
 };
