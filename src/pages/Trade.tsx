@@ -1,25 +1,56 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { Clock, MapPin, ShoppingBag, Sparkles, Wallet } from "lucide-react";
+import { Clock, MapPin, ShoppingBag, Sparkles, Wallet, Lock, ChevronDown, ChevronUp, ShieldAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { PhoneShell } from "@/components/PhoneShell";
 import { useAppState, appStore } from "@/lib/app-store";
-import { TRADE_LISTINGS, type TradeListing } from "@/lib/mock-data";
+import { TRADE_LISTINGS, PARKING_LOTS, type TradeListing } from "@/lib/mock-data";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { notificationsStore } from "@/lib/notifications-store";
+import { cn } from "@/lib/utils";
 
 export default function TradePage() {
   const user = useAppState((s) => s.user);
   const credits = useAppState((s) => s.credits);
+  const reservedListingIds = useAppState((s) => s.reservedListingIds);
   const { t } = useTranslation();
   const [selected, setSelected] = useState<TradeListing | null>(null);
   const [confirmed, setConfirmed] = useState<string | null>(null);
+  const [showIneligible, setShowIneligible] = useState(false);
+
+  const { eligibleListings, ineligibleListings } = useMemo(() => {
+    if (!user) return { eligibleListings: [] as TradeListing[], ineligibleListings: [] as TradeListing[] };
+    const eligibleLotIds = new Set(
+      PARKING_LOTS.filter((l) => !l.prohibited && l.eligibleFor.includes(user.type)).map((l) => l.id),
+    );
+    return {
+      eligibleListings: TRADE_LISTINGS.filter((l) => eligibleLotIds.has(l.lotId)),
+      ineligibleListings: TRADE_LISTINGS.filter((l) => !eligibleLotIds.has(l.lotId)),
+    };
+  }, [user]);
 
   if (!user) return <Navigate to="/" replace />;
 
+  const isReserved = (id: string) => reservedListingIds.includes(id);
+
   const reserve = (listing: TradeListing) => {
     if (credits < listing.priceCredits) return;
-    appStore.set({ credits: credits - listing.priceCredits });
+    if (isReserved(listing.id)) return;
+    appStore.set({
+      credits: credits - listing.priceCredits,
+      reservedListingIds: [...reservedListingIds, listing.id],
+    });
+    notificationsStore.add({
+      type: "trade",
+      title: t("notifications.spotReserved"),
+      body: t("notifications.spotReservedBody", {
+        lot: listing.lot,
+        from: listing.windowStart,
+        to: listing.windowEnd,
+      }),
+      lotId: listing.lotId,
+    });
     setConfirmed(listing.id);
     setSelected(null);
     setTimeout(() => setConfirmed(null), 2400);
@@ -59,40 +90,101 @@ export default function TradePage() {
           <Sparkles className="h-3.5 w-3.5 text-primary" />
           <h2 className="text-sm font-semibold">{t("trade.availableNow")}</h2>
           <span className="ms-auto text-[10px] uppercase tracking-wider text-muted-foreground">
-            {t("trade.listingsCount", { n: TRADE_LISTINGS.length })}
+            {t("trade.listingsCount", { n: eligibleListings.length })}
           </span>
         </div>
 
         <div className="mt-3 space-y-3">
-          {TRADE_LISTINGS.map((l) => (
-            <button
-              key={l.id}
-              onClick={() => setSelected(l)}
-              className="glass shadow-soft flex w-full items-center gap-3 rounded-2xl p-3 text-start transition-smooth hover:border-primary/40 hover:shadow-glow"
-            >
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-                <ShoppingBag className="h-5 w-5" />
+          {eligibleListings.map((l) => {
+            const reserved = isReserved(l.id);
+            return (
+              <div key={l.id} className="relative">
+                <button
+                  onClick={() => !reserved && setSelected(l)}
+                  disabled={reserved}
+                  className={cn(
+                    "glass shadow-soft relative flex w-full items-center gap-3 overflow-hidden rounded-2xl p-3 text-start transition-smooth",
+                    reserved
+                      ? "opacity-60 cursor-not-allowed"
+                      : "hover:border-primary/40 hover:shadow-glow",
+                  )}
+                >
+                  {/* Reserved ribbon (rotated 45°, top-end corner) */}
+                  {reserved && (
+                    <div
+                      className="pointer-events-none absolute top-3 -end-8 z-10 rotate-45 gradient-success px-8 py-0.5 text-[10px] font-bold uppercase tracking-wider text-success-foreground shadow-soft"
+                      aria-hidden="true"
+                    >
+                      {t("trade.reserved")}
+                    </div>
+                  )}
+
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+                    <ShoppingBag className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-semibold">{l.lot}</p>
+                      <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
+                        {t(`ownerType.${l.ownerType}`)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{t("trade.by")} {l.ownerName}</p>
+                    <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground">
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{l.windowStart} – {l.windowEnd}</span>
+                      <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{l.distanceM} {t("common.m")}</span>
+                    </div>
+                  </div>
+                  <div className="text-end">
+                    {reserved ? (
+                      <p className="text-[11px] font-medium text-muted-foreground">{t("trade.alreadyReserved")}</p>
+                    ) : (
+                      <>
+                        <p className="text-base font-bold text-primary">{l.priceCredits}</p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t("common.credits")}</p>
+                      </>
+                    )}
+                  </div>
+                </button>
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="truncate text-sm font-semibold">{l.lot}</p>
-                  <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
-                    {t(`ownerType.${l.ownerType}`)}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground">{t("trade.by")} {l.ownerName}</p>
-                <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground">
-                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{l.windowStart} – {l.windowEnd}</span>
-                  <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{l.distanceM} {t("common.m")}</span>
-                </div>
-              </div>
-              <div className="text-end">
-                <p className="text-base font-bold text-primary">{l.priceCredits}</p>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{t("common.credits")}</p>
-              </div>
-            </button>
-          ))}
+            );
+          })}
         </div>
+
+        {/* Ineligible listings (collapsed by default) */}
+        {ineligibleListings.length > 0 && (
+          <div className="mt-6">
+            <button
+              onClick={() => setShowIneligible((v) => !v)}
+              className="flex w-full items-center gap-2 rounded-2xl border border-border bg-card/60 px-3 py-2 text-xs font-semibold text-muted-foreground transition-smooth hover:bg-muted"
+            >
+              <Lock className="h-3.5 w-3.5" />
+              <span>{t("trade.notForPermit")}</span>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px]">{ineligibleListings.length}</span>
+              <span className="ms-auto">
+                {showIneligible ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </span>
+            </button>
+            {showIneligible && (
+              <div className="mt-2 space-y-2 animate-fade-in">
+                {ineligibleListings.map((l) => (
+                  <div
+                    key={l.id}
+                    className="glass shadow-soft flex items-center gap-3 rounded-2xl p-3 opacity-60"
+                  >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                      <Lock className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-muted-foreground">{l.lot}</p>
+                      <p className="text-[11px] text-muted-foreground">{t("trade.notEligibleNote")}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {confirmed && (
           <div className="fixed inset-x-0 bottom-28 z-50 mx-auto flex max-w-md justify-center px-4 animate-slide-up">
@@ -126,21 +218,29 @@ export default function TradePage() {
                 <span className="text-muted-foreground">{t("trade.walletAfter")}</span>
                 <span className="font-semibold">{credits - selected.priceCredits} {t("common.credits")}</span>
               </div>
-              <div className="mt-4 flex gap-2">
-                <button
-                  onClick={() => setSelected(null)}
-                  className="flex-1 rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium transition-smooth hover:bg-muted"
-                >
-                  {t("common.cancel")}
-                </button>
-                <button
-                  disabled={credits < selected.priceCredits}
-                  onClick={() => reserve(selected)}
-                  className="flex-[1.5] rounded-2xl gradient-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-glow transition-smooth hover:brightness-110 disabled:opacity-40"
-                >
-                  {t("trade.reserveFor", { n: selected.priceCredits })}
-                </button>
-              </div>
+
+              {isReserved(selected.id) ? (
+                <div className="mt-4 flex items-center gap-2 rounded-2xl border border-warning/30 bg-warning/10 p-3 text-xs text-warning-foreground dark:text-warning">
+                  <ShieldAlert className="h-4 w-4 shrink-0" />
+                  <span className="font-medium">{t("trade.alreadyReservedWarning")}</span>
+                </div>
+              ) : (
+                <div className="mt-4 flex gap-2">
+                  <button
+                    onClick={() => setSelected(null)}
+                    className="flex-1 rounded-2xl border border-border bg-background px-4 py-3 text-sm font-medium transition-smooth hover:bg-muted"
+                  >
+                    {t("common.cancel")}
+                  </button>
+                  <button
+                    disabled={credits < selected.priceCredits}
+                    onClick={() => reserve(selected)}
+                    className="flex-[1.5] rounded-2xl gradient-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-glow transition-smooth hover:brightness-110 disabled:opacity-40"
+                  >
+                    {t("trade.reserveFor", { n: selected.priceCredits })}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

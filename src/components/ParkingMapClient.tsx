@@ -4,12 +4,16 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { CAMPUS_CENTER, type ParkingLot } from "@/lib/mock-data";
 
+export type LotMarkerState = "eligible" | "ineligible" | "prohibited";
+
 interface ParkingMapProps {
   lots: ParkingLot[];
   selectedId: string | null;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, state: LotMarkerState) => void;
   routeTo?: ParkingLot | null;
   theme: "light" | "dark";
+  ineligible?: ParkingLot[];
+  prohibited?: ParkingLot[];
 }
 
 const STATUS_COLOR: Record<ParkingLot["status"], string> = {
@@ -18,7 +22,6 @@ const STATUS_COLOR: Record<ParkingLot["status"], string> = {
   occupied: "#ef4444",
 };
 
-// Light tiles: CARTO Voyager. Dark tiles: CARTO Dark Matter. Both free, no key.
 const TILE_LIGHT =
   "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 const TILE_DARK =
@@ -26,9 +29,46 @@ const TILE_DARK =
 const TILE_ATTR =
   '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>';
 
-function buildIcon(lot: ParkingLot, selected: boolean, theme: "light" | "dark") {
-  const size = selected ? 44 : 36;
+function buildIcon(
+  lot: ParkingLot,
+  selected: boolean,
+  theme: "light" | "dark",
+  state: LotMarkerState,
+) {
   const ring = theme === "dark" ? "rgba(20,22,30,0.9)" : "rgba(255,255,255,0.95)";
+
+  if (state === "prohibited") {
+    const size = 26;
+    const html = `
+      <div style="
+        width:${size}px;height:${size}px;border-radius:9999px;
+        background:rgba(239,68,68,0.55);
+        color:#fff;font-weight:800;font-size:13px;line-height:1;
+        display:grid;place-items:center;
+        border:2px solid ${ring};
+        box-shadow:0 4px 14px rgba(0,0,0,0.3);
+        font-family:ui-sans-serif,system-ui,sans-serif;
+      ">✕</div>`;
+    return L.divIcon({ html, className: "kfupm-marker", iconSize: [size, size], iconAnchor: [size / 2, size / 2] });
+  }
+
+  if (state === "ineligible") {
+    const size = 30;
+    const html = `
+      <div style="
+        width:${size}px;height:${size}px;border-radius:9999px;
+        background:#9CA3AF;
+        color:#fff;font-weight:700;font-size:12px;line-height:1;
+        display:grid;place-items:center;
+        border:2px solid ${ring};
+        box-shadow:0 4px 14px rgba(0,0,0,0.25);
+        opacity:0.85;
+        font-family:ui-sans-serif,system-ui,sans-serif;
+      ">🔒</div>`;
+    return L.divIcon({ html, className: "kfupm-marker", iconSize: [size, size], iconAnchor: [size / 2, size / 2] });
+  }
+
+  const size = selected ? 44 : 36;
   const color = STATUS_COLOR[lot.status];
   const halo = selected ? `0 0 0 6px ${color}33,` : "";
   const html = `
@@ -64,6 +104,8 @@ export function ParkingMap({
   onSelect,
   routeTo,
   theme,
+  ineligible = [],
+  prohibited = [],
 }: ParkingMapProps) {
   const center = useMemo<[number, number]>(
     () => [CAMPUS_CENTER[1], CAMPUS_CENTER[0]],
@@ -98,23 +140,38 @@ export function ParkingMap({
 
         {routePath && (
           <>
-            <Polyline
-              positions={routePath}
-              pathOptions={{ color: "#3b82f6", weight: 12, opacity: 0.25 }}
-            />
-            <Polyline
-              positions={routePath}
-              pathOptions={{ color: "#60a5fa", weight: 4, opacity: 0.95 }}
-            />
+            <Polyline positions={routePath} pathOptions={{ color: "#3b82f6", weight: 12, opacity: 0.25 }} />
+            <Polyline positions={routePath} pathOptions={{ color: "#60a5fa", weight: 4, opacity: 0.95 }} />
           </>
         )}
 
+        {/* Prohibited (lowest layer) */}
+        {prohibited.map((lot) => (
+          <Marker
+            key={`p-${lot.id}`}
+            position={[lot.coordinates[1], lot.coordinates[0]]}
+            icon={buildIcon(lot, false, theme, "prohibited")}
+            eventHandlers={{ click: () => onSelect(lot.id, "prohibited") }}
+          />
+        ))}
+
+        {/* Ineligible */}
+        {ineligible.map((lot) => (
+          <Marker
+            key={`i-${lot.id}`}
+            position={[lot.coordinates[1], lot.coordinates[0]]}
+            icon={buildIcon(lot, false, theme, "ineligible")}
+            eventHandlers={{ click: () => onSelect(lot.id, "ineligible") }}
+          />
+        ))}
+
+        {/* Eligible */}
         {lots.map((lot) => (
           <Marker
             key={lot.id}
             position={[lot.coordinates[1], lot.coordinates[0]]}
-            icon={buildIcon(lot, selectedId === lot.id, theme)}
-            eventHandlers={{ click: () => onSelect(lot.id) }}
+            icon={buildIcon(lot, selectedId === lot.id, theme, "eligible")}
+            eventHandlers={{ click: () => onSelect(lot.id, "eligible") }}
           />
         ))}
 
