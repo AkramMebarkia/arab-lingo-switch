@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Check, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ShieldCheck, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { appStore } from "@/lib/app-store";
-import { type UserType } from "@/lib/mock-data";
+import { PARKING_LOTS, type UserType } from "@/lib/mock-data";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { cn } from "@/lib/utils";
@@ -142,6 +142,7 @@ export default function Onboarding() {
                   );
                 })}
               </div>
+              {type && <PermitAccessStrip type={type} />}
             </Step>
           )}
         </div>
@@ -155,6 +156,25 @@ export default function Onboarding() {
           <ArrowRight className="h-4 w-4 rtl:rotate-180" />
         </button>
       </div>
+    </div>
+  );
+}
+
+function PermitAccessStrip({ type }: { type: UserType }) {
+  const { t } = useTranslation();
+  const count = useMemo(
+    () => PARKING_LOTS.filter((l) => !l.prohibited && l.eligibleFor.includes(type)).length,
+    [type],
+  );
+  const permitName = t(`userTypes.${type}.tag`);
+  return (
+    <div className="glass-strong shadow-soft mt-3 flex items-center gap-3 rounded-2xl p-3 animate-fade-in">
+      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15 text-primary">
+        <Sparkles className="h-4 w-4" />
+      </div>
+      <p className="flex-1 text-xs leading-snug">
+        {t("onboarding.permitAccess", { emoji: EMOJI[type], permit: permitName, n: count })}
+      </p>
     </div>
   );
 }
