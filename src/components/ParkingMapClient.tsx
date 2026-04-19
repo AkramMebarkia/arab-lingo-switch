@@ -126,7 +126,7 @@ export function ParkingMap({
     <div className="absolute inset-0">
       <MapContainer
         center={center}
-        zoom={16}
+        zoom={15}
         scrollWheelZoom
         zoomControl={false}
         attributionControl={false}
